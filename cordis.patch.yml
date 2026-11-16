@@ -1,0 +1,10 @@
+# 消息检索 bundle。
+#
+# Host 半边自己扫 <dshHome>/sessions 下的会话日志做检索，所以**不再需要**打开
+# session-query-sqlite 的内容索引（原版在这里改写过那一行）。不再依赖 sessionQuery
+# 也顺带避开了它对历史日志做 v0→v4 迁移时"step/end 未闭合工具调用"导致的整体失败。
+- insert:
+    - id: message-search
+      name: 'my-dsh-message-search'
+      config:
+        maxHits: 200

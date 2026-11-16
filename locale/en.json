@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Message search",
+    "description": "A Ctrl+F overlay that searches message text in the current session, one workspace, or every session, lists hits newest first with highlighted keywords, and opens the owning session on Enter."
+  }
+}
