@@ -3,6 +3,10 @@
   "version": "0.2.0",
   "license": "MIT",
   "description": "跨会话消息检索：Ctrl+F 打开，按当前会话 / 工作区 / 全部会话检索消息正文",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/myhylijp/my-dsh-message-search.git"
+  },
   "type": "module",
   "exports": {
     ".": "./host.js",
