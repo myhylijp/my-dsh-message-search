@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const NS = 'messageSearch'
     const ROUTE = 'api/message-search'
-    const UI_REVISION = '2026-11-18.4'
+    const UI_REVISION = '2026-11-18.5'
 
     const zh = {
       title: '检索消息',
@@ -31,6 +31,7 @@ window.__ModuleLoader__.load({
       noFiles: '没有匹配的附件',
       noImages: '没有匹配的图片',
       originUser: '用户上传',
+      originMention: '用户引用',
       originAgent: 'Agent 生成',
       openFolder: '打开文件夹',
       locateAttachment: '定位到所在消息',
@@ -77,6 +78,7 @@ window.__ModuleLoader__.load({
       noFiles: 'No matching files',
       noImages: 'No matching images',
       originUser: 'Uploaded',
+      originMention: 'Mentioned',
       originAgent: 'Agent',
       openFolder: 'Open folder',
       locateAttachment: 'Jump to the message',
@@ -205,6 +207,11 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
 .msn-attach:hover,.msn-attach[data-active='true']{background:var(--dsw-alias-interactive-bg-hover)}
 .msn-attach-main{flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:8px 10px;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .msn-attach-body{flex:1;min-width:0;display:block}
+.msn-attach-l1{display:flex;align-items:baseline;gap:8px;min-width:0}
+.msn-attach-name{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:none;max-width:52%}
+.msn-attach-title{font-size:12px;color:var(--dsw-alias-label-caption);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.msn-attach-l2{display:flex;align-items:center;gap:8px;margin-top:3px;font-size:12px;color:var(--dsw-alias-label-caption)}
+.msn-attach-time,.msn-attach-size{font-variant-numeric:tabular-nums}
 .msn-attach-open{flex:none;align-self:center;margin-right:6px;appearance:none;border:0.5px solid var(--dsw-alias-border-l4);background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;padding:3px 10px;border-radius:999px;cursor:pointer}
 .msn-attach-open:hover{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-caption)}
 .msn-thumb{flex:none;width:44px;height:44px;border-radius:8px;object-fit:cover;background:var(--dsw-alias-bg-module-platform)}
@@ -961,24 +968,23 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
               onClick: () => openAttachmentItem(item),
               title: tr('locateAttachment'),
             }, [
-              mode === 'image'
-                ? h(AttachmentThumb, { key: 'thumb', item, request: requestRef.current, enabled: index < 24 })
-                : null,
               h('span', { key: 'body', className: 'msn-attach-body' }, [
-                h('span', { key: 'head', className: 'msn-row-head' }, [
+                h('span', { key: 'l1', className: 'msn-attach-l1' }, [
+                  h('span', { key: 'n', className: 'msn-attach-name' }, item.name !== '' ? item.name : item.id.slice(0, 16)),
+                  h('span', { key: 'w', className: 'msn-row-where' }, where),
+                  h('span', { key: 't', className: 'msn-attach-title' }, title),
+                ]),
+                h('span', { key: 'l2', className: 'msn-attach-l2' }, [
                   h('span', {
                     key: 'origin',
                     className: 'msn-badge',
                     'data-origin': item.origin,
-                  }, item.origin === 'agent' ? tr('originAgent') : tr('originUser')),
-                  h('span', { key: 'n', className: 'msn-row-title' }, item.name !== '' ? item.name : item.id.slice(0, 16)),
-                  h('span', { key: 'w', className: 'msn-row-where' }, where),
-                  h('span', { key: 'time', className: 'msn-row-time' }, timeText(item.time)),
-                ]),
-                h('span', { key: 'sub', className: 'msn-row-snippet' }, [
-                  h('span', { key: 't' }, title),
-                  h('span', { key: 's' }, ' · ' + size),
-                  item.exists ? null : h('span', { key: 'm', className: 'msn-missing' }, ' · ' + tr('missingFile')),
+                  }, item.source === 'mention'
+                    ? tr('originMention')
+                    : (item.origin === 'agent' ? tr('originAgent') : tr('originUser'))),
+                  h('span', { key: 'time', className: 'msn-attach-time' }, timeText(item.time)),
+                  h('span', { key: 's', className: 'msn-attach-size' }, size),
+                  item.exists ? null : h('span', { key: 'm', className: 'msn-missing' }, tr('missingFile')),
                 ]),
               ]),
             ]),

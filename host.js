@@ -24,7 +24,7 @@ export const name = 'message-search'
 /** Client 页面读取的私有路由。 */
 const HTTP_PATH = '/api/message-search'
 /** Host 构建标记。 */
-const HOST_REVISION = '2026-11-18.4'
+const HOST_REVISION = '2026-11-18.5'
 /** 一次检索最多返回多少条命中。 */
 const MAX_BLOB_BYTES = 12 * 1024 * 1024
 const DEFAULT_MAX_HITS = 200
@@ -121,6 +121,7 @@ function start(ctx, config) {
     const messages = []
     const attachments = []
     const writes = []
+    const mentions = []
     let title = ''
     let turn = 0
     for (const line of text.split('\n')) {
@@ -189,6 +190,21 @@ function start(ctx, config) {
       if (event.type === 'user/message') {
         collectAttachments(event.data?.content, 'user', { turn, seq: Number(event.seq ?? 0), time: Number(event.time ?? 0) }, 'message')
         const content = textOf(event.data?.content)
+        // "@C:\path\file.docx" 只是文本引用，不进附件库；照样能在"附件"里查到
+        for (const match of content.matchAll(/@([A-Za-z]:[\\/][^\n@]*)/g)) {
+          const tokens = match[1].trim().split(/\s+/)
+          // 路径可能带空格：从长到短试几个组合，能 stat 到的那个才算
+          for (let count = Math.min(tokens.length, 4); count >= 1; count -= 1) {
+            const candidate = tokens.slice(0, count).join(' ').replace(/[，。；、）)】》"']+$/, '')
+            try {
+              if (!fs.statSync(candidate).isFile()) continue
+            } catch {
+              continue
+            }
+            mentions.push({ path: candidate, turn, seq: Number(event.seq ?? 0), time: Number(event.time ?? 0) })
+            break
+          }
+        }
         if (content.trim() !== '') {
           messages.push({ role: 'user', text: content, time: Number(event.time ?? 0), seq: Number(event.seq ?? 0), turn })
         }
@@ -203,7 +219,7 @@ function start(ctx, config) {
       }
     }
     if (title === '' && messages.length > 0) title = messages[0].text.slice(0, 40)
-    const parsed = { mtimeMs: stat.mtimeMs, size: stat.size, title, messages, attachments, writes }
+    const parsed = { mtimeMs: stat.mtimeMs, size: stat.size, title, messages, attachments, writes, mentions }
     cache.set(file, parsed)
     return parsed
   }
@@ -439,6 +455,42 @@ function start(ctx, config) {
       const priorityOf = (source) => (source === 'message' ? 3 : source === 'tool' ? 2 : 1)
       const seen = new Map()
       if (kind === 'file') {
+        // 用户在消息里 @ 引用的本地文件（不在附件库，只有路径）
+        for (const mention of parsed.mentions ?? []) {
+          const name = path.basename(mention.path)
+          if (query !== '' && !name.toLowerCase().includes(query)) continue
+          const key = session.sessionId + '|mention|' + mention.path
+          if (seen.has(key)) continue
+          seen.set(key, { source: 'mention', seq: mention.seq, turn: mention.turn })
+          scanned += 1
+          let exists = false
+          let bytes = 0
+          try {
+            const stat = fs.statSync(mention.path)
+            exists = stat.isFile()
+            bytes = exists ? stat.size : 0
+          } catch { exists = false }
+          items.push({
+            kind: 'file',
+            id: '',
+            name,
+            mediaType: '',
+            bytes,
+            width: 0,
+            height: 0,
+            origin: 'user',
+            source: 'mention',
+            turn: mention.turn,
+            seq: mention.seq,
+            time: mention.time,
+            sessionId: session.sessionId,
+            title,
+            workspaceId: owner?.id ?? '',
+            workspaceTitle: owner?.title ?? '',
+            path: mention.path,
+            exists,
+          })
+        }
         // Agent 写出的工作区文件：同一会话里同一路径只保留最后一次写入
         const lastWrite = new Map()
         for (const write of parsed.writes ?? []) lastWrite.set(write.path, write)
