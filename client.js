@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const NS = 'messageSearch'
     const ROUTE = 'api/message-search'
-    const UI_REVISION = '2026-11-18.9'
+    const UI_REVISION = '2026-11-18.10'
 
     const zh = {
       title: '检索消息',
@@ -59,6 +59,7 @@ window.__ModuleLoader__.load({
       emptyNoSession: '当前没有打开的会话；可切到「工作区」或「全部会话」。',
       hint: '↑↓ 选择 · Enter 打开 · Esc 关闭',
       close: '关闭检索',
+      clear: '清空',
       untitled: '未命名会话',
       ungrouped: '未分组',
       roleUser: '我',
@@ -107,6 +108,7 @@ window.__ModuleLoader__.load({
       emptyNoSession: 'No session is open; switch to Workspace or All sessions.',
       hint: '↑↓ select · Enter open · Esc close',
       close: 'Close search',
+      clear: 'Clear',
       untitled: 'Untitled session',
       ungrouped: 'No workspace',
       roleUser: 'You',
@@ -184,6 +186,8 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
 .msn-bar{display:flex;align-items:center;gap:6px;margin:12px 24px 0;height:40px;box-sizing:border-box;padding:0 6px 0 14px;border:0.5px solid var(--dsw-alias-border-l4);border-radius:12px;background:transparent}
 .msn-bar:focus-within{border-color:var(--dsw-alias-label-caption)}
 .msn-input{flex:1 1 auto;min-width:0;height:100%;border:0;background:transparent;color:var(--dsw-alias-label-primary);font-size:13px;padding:0;outline:none}
+.msn-clear{flex:none;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border:0;border-radius:999px;background:transparent;color:var(--dsw-alias-label-caption);cursor:pointer}
+.msn-clear:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
 .msn-input::placeholder{color:var(--dsw-alias-label-caption)}
 .msn-scopes{position:relative;display:flex;align-items:center;gap:2px;flex:none}
 .msn-scope{display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;color:var(--dsw-alias-label-caption);font-size:12.5px;line-height:20px;padding:5px 9px;border-radius:8px;cursor:pointer;white-space:nowrap;max-width:170px}
@@ -1174,6 +1178,23 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
               onChange: (event) => setQuery(event.target.value),
               onKeyDown,
             }),
+            query === ''
+              ? null
+              : h('button', {
+                key: 'clear',
+                type: 'button',
+                className: 'msn-clear',
+                'aria-label': tr('clear'),
+                title: tr('clear'),
+                onMouseDown: (event) => event.preventDefault(),
+                onClick: () => {
+                  setQuery('')
+                  inputRef.current?.focus()
+                },
+              }, h('svg', {
+                width: 12, height: 12, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
+                strokeWidth: 2, strokeLinecap: 'round',
+              }, [h('path', { key: 'a', d: 'M6 6l12 12' }), h('path', { key: 'b', d: 'M18 6L6 18' })])),
             h('div', { key: 'scopes', className: 'msn-scopes' }, [
               h('button', {
                 key: 'current', type: 'button', className: 'msn-scope',
