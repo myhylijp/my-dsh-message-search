@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const NS = 'messageSearch'
     const ROUTE = 'api/message-search'
-    const UI_REVISION = '2026-11-15.1'
+    const UI_REVISION = '2026-11-18.1'
 
     const zh = {
       title: '检索消息',
@@ -40,8 +40,6 @@ window.__ModuleLoader__.load({
       emptyNoSession: '当前没有打开的会话；可切到「工作区」或「全部会话」。',
       hint: '↑↓ 选择 · Enter 打开 · Esc 关闭',
       close: '关闭检索',
-      roundsLabel: '定位轮数 {count}',
-      roundsHint: '命中后最多滚动多少轮去定位该消息',
       untitled: '未命名会话',
       ungrouped: '未分组',
       roleUser: '我',
@@ -71,8 +69,6 @@ window.__ModuleLoader__.load({
       emptyNoSession: 'No session is open; switch to Workspace or All sessions.',
       hint: '↑↓ select · Enter open · Esc close',
       close: 'Close search',
-      roundsLabel: 'Scroll rounds {count}',
-      roundsHint: 'How many scroll rounds to spend locating the message',
       untitled: 'Untitled session',
       ungrouped: 'No workspace',
       roleUser: 'You',
@@ -167,9 +163,6 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
 .msn-menu-empty{padding:8px 10px;font-size:12.5px;color:var(--dsw-alias-label-caption)}
 .msn-status{display:flex;align-items:center;gap:10px;padding:10px 24px 6px;font-size:12.5px;color:var(--dsw-alias-label-caption);min-height:28px}
 .msn-status-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.msn-rounds{display:inline-flex;align-items:center;gap:8px;flex:none;font-size:12px;color:var(--dsw-alias-label-caption)}
-.msn-rounds-label{white-space:nowrap;font-variant-numeric:tabular-nums}
-.msn-range{width:96px;accent-color:var(--dsw-alias-label-primary);cursor:pointer}
 .msn-status-error{color:var(--dsw-alias-state-error-primary)}
 .msn-note{padding:0 24px 8px;font-size:12px;color:var(--dsw-alias-label-caption)}
 .msn-list{flex:1;margin:0;padding:6px 14px 10px;list-style:none;overflow:auto;border-top:0.5px solid var(--dsw-alias-border-l4);min-height:0}
@@ -251,17 +244,16 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
     /**
      * 定位入口：包一层 try/catch，出错时给出明确提示而不是静默。
      * @param {{snippet?: string, turn?: number}} hit - 命中。
-     * @param {number} maxRounds - 轮数上限。
      */
-    function locateMessage(hit, maxRounds = 120, keyword = '') {
+    function locateMessage(hit, keyword = '') {
       try {
-        locateMessageInner(hit, maxRounds, keyword)
+        locateMessageInner(hit, keyword)
       } catch (error) {
         locateFailed(error instanceof Error ? error.message : String(error))
       }
     }
 
-    function locateMessageInner(hit, maxRounds = 120, keyword = '') {
+    function locateMessageInner(hit, keyword = '') {
       if (typeof document === 'undefined') return
       // 优先用从关键词开始的 match：片段开头是前置上下文，拿它定位会偏到上一行
       const raw = String(hit?.match ?? hit?.snippet ?? '').replace(/^…/, '').replace(/…$/, '')
@@ -586,13 +578,6 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
       const [workspaces, setWorkspaces] = React.useState([])
       const [workspaceId, setWorkspaceId] = React.useState('')
       const [menuOpen, setMenuOpen] = React.useState(false)
-      const [maxRounds, setMaxRounds] = React.useState(() => {
-        try {
-          const stored = Number(window.localStorage.getItem('msn.maxRounds'))
-          if (Number.isFinite(stored) && stored >= 20) return Math.min(400, stored)
-        } catch { /* 读不到用默认 */ }
-        return 120
-      })
       const [phase, setPhase] = React.useState('idle')
       const [result, setResult] = React.useState(null)
       const [failure, setFailure] = React.useState(null)
@@ -726,7 +711,7 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
       const openSession = (id, hit) => {
         setOpen(false)
         props.openSession(id)
-        if (hit !== undefined) locateMessage(hit, maxRounds, query.trim())
+        if (hit !== undefined) locateMessage(hit, query.trim())
       }
 
       // 边输边搜：输入、范围、工作区任一变，250ms 无新输入就自动检索，不用回车。
@@ -928,19 +913,6 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
           ]),
           h('div', { key: 'status', className: `msn-status ${phase === 'error' ? 'msn-status-error' : ''}`, 'aria-live': 'polite' }, [
             h('span', { key: 'txt', className: 'msn-status-text' }, statusText),
-            h('label', { key: 'rounds', className: 'msn-rounds', title: tr('roundsHint') }, [
-              h('span', { key: 'l', className: 'msn-rounds-label' }, tr('roundsLabel', { count: String(maxRounds) })),
-              h('input', {
-                key: 'i', type: 'range', className: 'msn-range',
-                min: 20, max: 400, step: 20, value: maxRounds,
-                'aria-label': tr('roundsLabel', { count: String(maxRounds) }),
-                onChange: (event) => {
-                  const next = Number(event.target.value)
-                  setMaxRounds(next)
-                  try { window.localStorage.setItem('msn.maxRounds', String(next)) } catch { /* 存不了就算了 */ }
-                },
-              }),
-            ]),
           ]),
           result !== null && result.truncated ? h('div', { key: 'trunc', className: 'msn-note' }, tr('truncated', { max: String(result.maxHits) })) : null,
           h('div', { key: 'body', className: 'msn-body' },
