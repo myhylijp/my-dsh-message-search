@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const NS = 'messageSearch'
     const ROUTE = 'api/message-search'
-    const UI_REVISION = '2026-11-18.8'
+    const UI_REVISION = '2026-11-18.9'
 
     const zh = {
       title: '检索消息',
@@ -222,6 +222,7 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
 .msn-attach-body{flex:1;min-width:0;display:block}
 .msn-attach-l1{display:flex;align-items:baseline;gap:8px;min-width:0}
 .msn-attach-name{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:none;max-width:52%}
+.msn-attach-name[data-gone='true']{text-decoration:line-through;text-decoration-thickness:1px;color:var(--dsw-alias-label-caption)}
 .msn-attach-title{font-size:12px;color:var(--dsw-alias-label-caption);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .msn-attach-l2{display:flex;align-items:center;gap:8px;margin-top:3px;font-size:12px;color:var(--dsw-alias-label-caption)}
 .msn-attach-time,.msn-attach-size{font-variant-numeric:tabular-nums}
@@ -1044,7 +1045,11 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
               h(FileGlyph, { key: 'glyph', name: item.name !== '' ? item.name : item.id }),
               h('span', { key: 'body', className: 'msn-attach-body' }, [
                 h('span', { key: 'l1', className: 'msn-attach-l1' }, [
-                  h('span', { key: 'n', className: 'msn-attach-name' }, item.name !== '' ? item.name : item.id.slice(0, 16)),
+                  h('span', {
+                    key: 'n',
+                    className: 'msn-attach-name',
+                    'data-gone': item.exists ? undefined : 'true',
+                  }, item.name !== '' ? item.name : item.id.slice(0, 16)),
                   h('span', { key: 'w', className: 'msn-row-where' }, where),
                   h('span', { key: 't', className: 'msn-attach-title' }, title),
                 ]),
