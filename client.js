@@ -16,11 +16,26 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const NS = 'messageSearch'
     const ROUTE = 'api/message-search'
-    const UI_REVISION = '2026-11-18.1'
+    const UI_REVISION = '2026-11-18.2'
 
     const zh = {
       title: '检索消息',
       placeholder: '检索消息正文…',
+      placeholderAttach: '按文件名筛选，留空则列出全部',
+      modeLabel: '检索对象',
+      modeText: '文本',
+      modeFile: '附件',
+      modeImage: '图片',
+      foundFiles: '共 {count} 个附件',
+      foundImages: '共 {count} 张图片',
+      noFiles: '没有匹配的附件',
+      noImages: '没有匹配的图片',
+      originUser: '用户上传',
+      originAgent: 'Agent 生成',
+      openFolder: '打开所在文件夹',
+      locateAttachment: '定位到所在消息',
+      jumpFailed: '没能跳到该消息所在轮次（会话可能还没渲染出轮次导航）',
+      missingFile: '文件缺失',
       scopeCurrent: '当前会话',
       scopeWorkspace: '工作区',
       scopeAll: '全部会话',
@@ -34,6 +49,8 @@ window.__ModuleLoader__.load({
       needWorkspace: '先选择一个工作区。',
       error: '检索失败：{message}',
       corpus: '范围：{sessions} 个会话 · {messages} 条消息',
+      corpusSessions: '范围：{sessions} 个会话',
+      foundItems: '共 {count} 项',
       elapsed: '{seconds}',
       truncated: '结果较多，只显示前 {max} 条。',
       skipped: '{count} 个会话日志无法解析，已跳过。',
@@ -50,6 +67,21 @@ window.__ModuleLoader__.load({
     const en = {
       title: 'Search messages',
       placeholder: 'Search message text…',
+      placeholderAttach: 'Filter by file name; leave empty to list all',
+      modeLabel: 'Search target',
+      modeText: 'Text',
+      modeFile: 'Files',
+      modeImage: 'Images',
+      foundFiles: '{count} files',
+      foundImages: '{count} images',
+      noFiles: 'No matching files',
+      noImages: 'No matching images',
+      originUser: 'Uploaded',
+      originAgent: 'Agent',
+      openFolder: 'Show in folder',
+      locateAttachment: 'Jump to the message',
+      jumpFailed: 'Could not jump to that turn yet (the turn navigation may not be rendered)',
+      missingFile: 'file missing',
       scopeCurrent: 'This session',
       scopeWorkspace: 'Workspace',
       scopeAll: 'All sessions',
@@ -63,6 +95,8 @@ window.__ModuleLoader__.load({
       needWorkspace: 'Choose a workspace first.',
       error: 'Search failed: {message}',
       corpus: 'Scope: {sessions} sessions · {messages} messages',
+      corpusSessions: 'Scope: {sessions} sessions',
+      foundItems: '{count} items',
       elapsed: '{seconds}',
       truncated: 'Showing the first {max} results.',
       skipped: '{count} session logs could not be parsed and were skipped.',
@@ -163,6 +197,20 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
 .msn-menu-empty{padding:8px 10px;font-size:12.5px;color:var(--dsw-alias-label-caption)}
 .msn-status{display:flex;align-items:center;gap:10px;padding:10px 24px 6px;font-size:12.5px;color:var(--dsw-alias-label-caption);min-height:28px}
 .msn-status-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.msn-modes{display:inline-flex;align-items:center;gap:2px;flex:none;padding:2px;border-radius:9px;background:var(--dsw-alias-bg-module-platform)}
+.msn-mode{appearance:none;border:0;background:transparent;color:var(--dsw-alias-label-caption);font:inherit;font-size:12px;line-height:18px;padding:2px 8px;border-radius:7px;cursor:pointer}
+.msn-mode:hover{color:var(--dsw-alias-label-primary)}
+.msn-mode[aria-pressed='true']{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.msn-attach{display:flex;align-items:stretch;gap:6px;border-radius:12px;padding:2px}
+.msn-attach:hover,.msn-attach[data-active='true']{background:var(--dsw-alias-interactive-bg-hover)}
+.msn-attach-main{flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:8px 10px;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.msn-attach-body{flex:1;min-width:0;display:block}
+.msn-attach-open{flex:none;align-self:center;margin-right:6px;appearance:none;border:0.5px solid var(--dsw-alias-border-l4);background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;padding:3px 10px;border-radius:999px;cursor:pointer}
+.msn-attach-open:hover{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-caption)}
+.msn-thumb{flex:none;width:44px;height:44px;border-radius:8px;object-fit:cover;background:var(--dsw-alias-bg-module-platform)}
+.msn-thumb-empty{display:inline-block}
+.msn-missing{color:var(--dsw-alias-state-error-primary)}
+.msn-note-warn{color:var(--dsw-alias-state-error-primary)}
 .msn-status-error{color:var(--dsw-alias-state-error-primary)}
 .msn-note{padding:0 24px 8px;font-size:12px;color:var(--dsw-alias-label-caption)}
 .msn-list{flex:1;margin:0;padding:6px 14px 10px;list-style:none;overflow:auto;border-top:0.5px solid var(--dsw-alias-border-l4);min-height:0}
@@ -567,6 +615,22 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
     }
 
     /** 检索面板。 */
+    /** 图片缩略图：按需向 Host 取 data URL。 */
+    function AttachmentThumb({ item, request, enabled }) {
+      const [url, setUrl] = React.useState(null)
+      React.useEffect(() => {
+        if (!enabled) return undefined
+        let alive = true
+        Promise.resolve(request('attachment-blob', { id: item.id, mediaType: item.mediaType }))
+          .then((value) => { if (alive) setUrl(value?.dataUrl ?? null) })
+          .catch(() => { if (alive) setUrl(null) })
+        return () => { alive = false }
+      }, [enabled, item.id, item.mediaType, request])
+      if (!enabled) return h('span', { className: 'msn-thumb msn-thumb-empty' })
+      if (url === null) return h('span', { className: 'msn-thumb msn-thumb-empty' })
+      return h('img', { className: 'msn-thumb', src: url, alt: item.name, loading: 'lazy' })
+    }
+
     function SearchPanel(props) {
       const tr = props.translate
       const request = props.request
@@ -586,7 +650,9 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
       // 结果对应的检索签名：query|scope|workspace。签名变化就清空旧结果，
       // 免得"改了范围还按 Enter"时打开的是上一次的命中。
       const [searchedFor, setSearchedFor] = React.useState('')
-      const signature = `${query.trim()}|${scope}|${workspaceId}`
+      // 检索模式：文本 / 附件 / 图片。附件与图片允许空关键词（=列出全部）。
+      const [mode, setMode] = React.useState('text')
+      const signature = `${mode}|${query.trim()}|${scope}|${workspaceId}`
       const stale = searchedFor !== signature
 
       const requestRef = React.useRef(request)
@@ -664,7 +730,8 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
 
       const run = React.useCallback(async () => {
         const keyword = query.trim()
-        if (keyword === '') { setPhase('idle'); setResult(null); setFailure(null); return }
+        const listing = mode !== 'text'
+        if (!listing && keyword === '') { setPhase('idle'); setResult(null); setFailure(null); return }
         if (scope === 'workspace' && workspaceId === '') { setPhase('idle'); setResult(null); setFailure(null); return }
         const sig = signatureRef.current
         abortRef.current?.abort()
@@ -675,12 +742,20 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
         setFailure(null)
         setElapsed(0)
         try {
-          const value = await requestRef.current('search', {
-            query: keyword,
-            scope,
-            sessionId: scope === 'current' ? sessionId : undefined,
-            workspaceId: scope === 'workspace' ? workspaceId : undefined,
-          })
+          const value = listing
+            ? await requestRef.current('attachments', {
+              query: keyword,
+              kind: mode,
+              scope,
+              sessionId: scope === 'current' ? sessionId : undefined,
+              workspaceId: scope === 'workspace' ? workspaceId : undefined,
+            })
+            : await requestRef.current('search', {
+              query: keyword,
+              scope,
+              sessionId: scope === 'current' ? sessionId : undefined,
+              workspaceId: scope === 'workspace' ? workspaceId : undefined,
+            })
           if (controller.signal.aborted || signatureRef.current !== sig) return
           setResult(value)
           setSearchedFor(sig)
@@ -694,9 +769,10 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
           setPhase('error')
           setElapsed(performance.now() - startedRef.current)
         }
-      }, [query, scope, sessionId, workspaceId])
+      }, [query, scope, sessionId, workspaceId, mode])
 
       const hits = stale ? [] : (result?.hits ?? [])
+      const attachments = stale ? [] : (result?.items ?? [])
       React.useEffect(() => { setActiveIndex(0) }, [result])
 
       React.useEffect(() => {
@@ -707,6 +783,45 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
         setPhase('idle')
         setFailure(null)
       }, [signature])
+
+      /** 点轮次导航按钮跳到第 N 轮（会话自己负责滚动）。 */
+      const jumpToTurn = (turn) => {
+        if (!Number.isFinite(turn) || turn <= 0) return false
+        const labels = ['跳转到第 ' + String(turn) + ' 轮', '加载并跳转到第 ' + String(turn) + ' 轮']
+        const target = [...document.querySelectorAll('[aria-label]')]
+          .find(el => labels.includes(el.getAttribute('aria-label') ?? ''))
+        if (target === undefined) return false
+        target.click()
+        return true
+      }
+
+      const [notice, setNotice] = React.useState(null)
+
+      /** 打开附件所在文件夹（资源管理器定位到文件）。 */
+      const openFolder = async (item) => {
+        try {
+          await requestRef.current('attachment-open', { id: item.id, kind: item.kind, path: item.path })
+          setNotice(null)
+        } catch (error) {
+          setNotice(error instanceof Error ? error.message : String(error))
+        }
+      }
+
+      /** 附件条目：打开会话并跳到它所在的那一轮。 */
+      const openAttachmentItem = (item) => {
+        setOpen(false)
+        props.openSession(item.sessionId)
+        const started = performance.now()
+        const attempt = () => {
+          if (jumpToTurn(item.turn)) { setNotice(null); return }
+          if (performance.now() - started > 4000) {
+            setNotice(tr('jumpFailed'))
+            return
+          }
+          window.setTimeout(attempt, 300)
+        }
+        window.setTimeout(attempt, 300)
+      }
 
       const openSession = (id, hit) => {
         setOpen(false)
@@ -719,7 +834,8 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
       React.useEffect(() => {
         if (!isOpen) return undefined
         const keyword = query.trim()
-        if (keyword === '' || (scope === 'workspace' && workspaceId === '')) {
+        const listing = mode !== 'text'
+        if ((!listing && keyword === '') || (scope === 'workspace' && workspaceId === '')) {
           setPhase('idle')
           setResult(null)
           setFailure(null)
@@ -731,7 +847,7 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
         window.clearTimeout(autoRef.current)
         autoRef.current = window.setTimeout(() => { void run() }, 250)
         return () => window.clearTimeout(autoRef.current)
-      }, [isOpen, signature, stale, run])
+      }, [isOpen, signature, stale, run, mode])
       React.useEffect(() => () => window.clearTimeout(autoRef.current), [])
 
       const onKeyDown = (event) => {
@@ -741,9 +857,10 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
           setOpen(false)
           return
         }
+        const listLength = mode === 'text' ? hits.length : attachments.length
         if (event.key === 'ArrowDown') {
           event.preventDefault()
-          setActiveIndex(index => Math.min(index + 1, Math.max(hits.length - 1, 0)))
+          setActiveIndex(index => Math.min(index + 1, Math.max(listLength - 1, 0)))
           return
         }
         if (event.key === 'ArrowUp') {
@@ -753,10 +870,13 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
         }
         if (event.key === 'Enter') {
           if (event.isComposing) return
-          const ready = !stale && phase === 'done' && hits.length > 0 && hits[activeIndex] !== undefined
+          const listing = mode !== 'text'
+          const items = listing ? attachments : hits
+          const ready = !stale && phase === 'done' && items.length > 0 && items[activeIndex] !== undefined
           if (ready) {
             event.preventDefault()
-            openSession(hits[activeIndex].sessionId, hits[activeIndex])
+            if (listing) openAttachmentItem(items[activeIndex])
+            else openSession(items[activeIndex].sessionId, items[activeIndex])
           } else {
             // 还没搜出这次的结果：立刻搜，不等防抖
             event.preventDefault()
@@ -771,17 +891,66 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
       const workspaceReady = scope !== 'workspace' || workspaceId !== ''
       // 状态行只放"结果/错误/提示"，检索中与无结果交给中间占位区显示一次，
       // 避免同一句话在上下两处重复。
+      const listing = mode !== 'text'
       const statusText = phase === 'error'
         ? tr('error', { message: failure ?? '' })
         : phase === 'done'
-          ? (hits.length === 0 ? '' : tr('found', { count: String(hits.length) }))
+          ? (listing
+            ? tr(mode === 'image' ? 'foundImages' : 'foundFiles', { count: String(attachments.length) })
+            : (hits.length === 0 ? '' : tr('found', { count: String(hits.length) })))
           : phase === 'searching'
             ? ''
             : scope === 'workspace' && workspaceId === ''
               ? tr('needWorkspace')
               : scope === 'current' && sessionId === undefined
                 ? tr('emptyNoSession')
-                : (query.trim() === '' ? tr('idle') : '')
+                : (query.trim() === '' && !listing ? tr('idle') : '')
+
+      const attachmentRows = attachments.map((item, index) => {
+        const where = item.workspaceTitle !== '' ? item.workspaceTitle : tr('ungrouped')
+        const title = item.title !== '' ? item.title : tr('untitled')
+        const size = item.bytes >= 1024 * 1024
+          ? (item.bytes / 1024 / 1024).toFixed(1) + ' MB'
+          : Math.max(1, Math.round(item.bytes / 1024)) + ' KB'
+        return h('li', { key: item.sessionId + '-' + String(item.seq) + '-' + item.id + '-' + String(index) },
+          h('div', {
+            className: 'msn-attach',
+            'data-active': index === activeIndex ? 'true' : undefined,
+            onMouseEnter: () => setActiveIndex(index),
+          }, [
+            h('button', {
+              key: 'main', type: 'button', className: 'msn-attach-main',
+              onClick: () => openAttachmentItem(item),
+              title: tr('locateAttachment'),
+            }, [
+              mode === 'image'
+                ? h(AttachmentThumb, { key: 'thumb', item, request: requestRef.current, enabled: index < 24 })
+                : null,
+              h('span', { key: 'body', className: 'msn-attach-body' }, [
+                h('span', { key: 'head', className: 'msn-row-head' }, [
+                  h('span', {
+                    key: 'origin',
+                    className: 'msn-badge',
+                    'data-origin': item.origin,
+                  }, item.origin === 'agent' ? tr('originAgent') : tr('originUser')),
+                  h('span', { key: 'n', className: 'msn-row-title' }, item.name !== '' ? item.name : item.id.slice(0, 16)),
+                  h('span', { key: 'w', className: 'msn-row-where' }, where),
+                  h('span', { key: 'time', className: 'msn-row-time' }, timeText(item.time)),
+                ]),
+                h('span', { key: 'sub', className: 'msn-row-snippet' }, [
+                  h('span', { key: 't' }, title),
+                  h('span', { key: 's' }, ' · ' + size),
+                  item.exists ? null : h('span', { key: 'm', className: 'msn-missing' }, ' · ' + tr('missingFile')),
+                ]),
+              ]),
+            ]),
+            h('button', {
+              key: 'open', type: 'button', className: 'msn-attach-open',
+              onClick: (event) => { event.stopPropagation(); void openFolder(item) },
+              title: tr('openFolder'),
+            }, tr('openFolder')),
+          ]))
+      })
 
       const rows = hits.map((hit, index) => {
         const where = hit.workspaceTitle !== '' ? hit.workspaceTitle : tr('ungrouped')
@@ -807,7 +976,9 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
 
       const footLeft = result === null
         ? ''
-        : `${tr('corpus', { sessions: String(result.scannedSessions), messages: String(result.scannedMessages) })}${result.skipped?.length ? ` · ${tr('skipped', { count: String(result.skipped.length) })}` : ''}`
+        : listing
+          ? `${tr('corpusSessions', { sessions: String(result.scannedSessions) })} · ${tr('foundItems', { count: String(result.total ?? attachments.length) })}${result.skipped?.length ? ` · ${tr('skipped', { count: String(result.skipped.length) })}` : ''}`
+          : `${tr('corpus', { sessions: String(result.scannedSessions), messages: String(result.scannedMessages) })}${result.skipped?.length ? ` · ${tr('skipped', { count: String(result.skipped.length) })}` : ''}`
 
       return h('div', {
         className: 'msn-layer',
@@ -842,7 +1013,7 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
               className: 'msn-input',
               type: 'text',
               value: query,
-              placeholder: tr('placeholder'),
+              placeholder: mode === 'text' ? tr('placeholder') : tr('placeholderAttach'),
               'aria-label': tr('placeholder'),
               onChange: (event) => setQuery(event.target.value),
               onKeyDown,
@@ -913,13 +1084,29 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
           ]),
           h('div', { key: 'status', className: `msn-status ${phase === 'error' ? 'msn-status-error' : ''}`, 'aria-live': 'polite' }, [
             h('span', { key: 'txt', className: 'msn-status-text' }, statusText),
+            h('div', { key: 'modes', className: 'msn-modes', role: 'group', 'aria-label': tr('modeLabel') }, [
+              ['text', 'modeText'], ['file', 'modeFile'], ['image', 'modeImage'],
+            ].map(([value, key]) => h('button', {
+              key: value,
+              type: 'button',
+              className: 'msn-mode',
+              'aria-pressed': mode === value ? 'true' : 'false',
+              title: tr(key),
+              onClick: () => { setMode(value); setNotice(null) },
+            }, tr(key)))),
           ]),
+          notice === null ? null : h('div', { key: 'notice', className: 'msn-note msn-note-warn' }, notice),
           result !== null && result.truncated ? h('div', { key: 'trunc', className: 'msn-note' }, tr('truncated', { max: String(result.maxHits) })) : null,
           h('div', { key: 'body', className: 'msn-body' },
-            hits.length > 0
-              ? h('ul', { key: 'list', className: 'msn-list' }, rows)
-              : h('div', { key: 'empty', className: 'msn-body-empty' },
-                phase === 'done' ? tr('noMatch') : (phase === 'searching' ? tr('searching') : ''))),
+            listing
+              ? (attachments.length > 0
+                ? h('ul', { key: 'list', className: 'msn-list' }, attachmentRows)
+                : h('div', { key: 'empty', className: 'msn-body-empty' },
+                  phase === 'done' ? tr(mode === 'image' ? 'noImages' : 'noFiles') : (phase === 'searching' ? tr('searching') : '')))
+              : (hits.length > 0
+                ? h('ul', { key: 'list', className: 'msn-list' }, rows)
+                : h('div', { key: 'empty', className: 'msn-body-empty' },
+                  phase === 'done' ? tr('noMatch') : (phase === 'searching' ? tr('searching') : '')))),
           h('div', { key: 'foot', className: 'msn-foot' }, [
             h('span', { key: 'hint' }, tr('hint')),
             h('span', { key: 'corpus' }, footLeft),
