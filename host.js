@@ -24,7 +24,7 @@ export const name = 'message-search'
 /** Client 页面读取的私有路由。 */
 const HTTP_PATH = '/api/message-search'
 /** Host 构建标记。 */
-const HOST_REVISION = '2026-11-18.5'
+const HOST_REVISION = '2026-11-18.6'
 /** 一次检索最多返回多少条命中。 */
 const MAX_BLOB_BYTES = 12 * 1024 * 1024
 const DEFAULT_MAX_HITS = 200
@@ -192,10 +192,13 @@ function start(ctx, config) {
         const content = textOf(event.data?.content)
         // "@C:\path\file.docx" 只是文本引用，不进附件库；照样能在"附件"里查到
         for (const match of content.matchAll(/@([A-Za-z]:[\\/][^\n@]*)/g)) {
-          const tokens = match[1].trim().split(/\s+/)
-          // 路径可能带空格：从长到短试几个组合，能 stat 到的那个才算
-          for (let count = Math.min(tokens.length, 4); count >= 1; count -= 1) {
-            const candidate = tokens.slice(0, count).join(' ').replace(/[，。；、）)】》"']+$/, '')
+          // 不能按空格切：编辑器插入的 chip 后面经常紧跟正文
+          // （"@C:\\…\\报告.docx总结一下内容"），只能从长到短试前缀，能 stat 到文件的就是路径。
+          const raw = match[1].trim()
+          const limit = Math.min(raw.length, 400)
+          for (let length = limit; length >= 4; length -= 1) {
+            const candidate = raw.slice(0, length).trim().replace(/[，。；、）)】》"'`]+$/, '')
+            if (candidate.length < 4) continue
             try {
               if (!fs.statSync(candidate).isFile()) continue
             } catch {
