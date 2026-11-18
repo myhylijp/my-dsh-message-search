@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const NS = 'messageSearch'
     const ROUTE = 'api/message-search'
-    const UI_REVISION = '2026-11-18.3'
+    const UI_REVISION = '2026-11-18.4'
 
     const zh = {
       title: '检索消息',
@@ -208,14 +208,17 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
 .msn-attach-open{flex:none;align-self:center;margin-right:6px;appearance:none;border:0.5px solid var(--dsw-alias-border-l4);background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;padding:3px 10px;border-radius:999px;cursor:pointer}
 .msn-attach-open:hover{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-caption)}
 .msn-thumb{flex:none;width:44px;height:44px;border-radius:8px;object-fit:cover;background:var(--dsw-alias-bg-module-platform)}
-.msn-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(136px,1fr));gap:10px;padding:6px 4px 12px}
+.msn-gallery{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:grid;grid-template-columns:repeat(auto-fill,minmax(136px,1fr));grid-auto-rows:min-content;gap:10px;padding:6px 14px 12px;align-content:start}
 .msn-tile{position:relative;border-radius:12px;overflow:hidden;background:var(--dsw-alias-bg-module-platform);border:0.5px solid var(--dsw-alias-border-l4)}
 .msn-tile[data-active='true']{border-color:var(--dsw-alias-label-caption);box-shadow:0 0 0 1px var(--dsw-alias-label-caption)}
 .msn-tile-hit{display:block;width:100%;padding:0;border:0;background:transparent;cursor:pointer}
-.msn-tile-img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--dsw-alias-bg-module-platform)}
-.msn-tile-empty{display:block;width:100%;aspect-ratio:4/3;background:var(--dsw-alias-interactive-bg-hover)}
+.msn-tile-img{display:block;width:100%;height:104px;object-fit:cover;background:var(--dsw-alias-bg-module-platform)}
+.msn-tile-empty{display:block;width:100%;height:104px;background:var(--dsw-alias-interactive-bg-hover)}
 .msn-tile-meta{display:flex;align-items:center;gap:6px;padding:5px 8px 6px;font-size:11px;color:var(--dsw-alias-label-caption)}
 .msn-tile-time{margin-left:auto;font-variant-numeric:tabular-nums}
+.msn-tile-open:disabled{opacity:.4;cursor:default}
+.msn-tile-gone{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);color:#fff;font-size:12px;pointer-events:none}
+.msn-attach-open:disabled{opacity:.45;cursor:default}
 .msn-tile-open{position:absolute;top:6px;right:6px;opacity:0;transition:opacity .15s ease;appearance:none;border:0.5px solid rgba(255,255,255,.35);background:rgba(0,0,0,.55);color:#fff;font:inherit;font-size:11px;line-height:16px;padding:2px 8px;border-radius:999px;cursor:pointer}
 .msn-tile:hover .msn-tile-open,.msn-tile[data-active='true'] .msn-tile-open{opacity:1}
 .msn-thumb-empty{display:inline-block}
@@ -817,13 +820,38 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
         }
       }
 
+      /**
+       * 跳到某一轮后，尽量把图片本身滚进视口：会话把图片渲染成 data URL，
+       * 其长度约为字节数的 4/3，用这个特征在正文里认出同一张图。
+       */
+      const focusImage = (item) => {
+        if (item.kind !== 'image' || !item.exists || item.bytes <= 0) return false
+        const expected = item.bytes * 4 / 3
+        const images = [...document.querySelectorAll('img')]
+          .filter(el => typeof el.src === 'string' && el.src.startsWith('data:image/'))
+        const match = images.find(el => Math.abs(el.src.length - expected) / expected < 0.06)
+        if (match === undefined) return false
+        match.scrollIntoView({ block: 'center', behavior: 'smooth' })
+        match.style.outline = '2px solid rgba(255,205,0,.95)'
+        match.style.outlineOffset = '2px'
+        window.setTimeout(() => {
+          match.style.outline = ''
+          match.style.outlineOffset = ''
+        }, 2600)
+        return true
+      }
+
       /** 附件条目：打开会话并跳到它所在的那一轮。 */
       const openAttachmentItem = (item) => {
         setOpen(false)
         props.openSession(item.sessionId)
         const started = performance.now()
         const attempt = () => {
-          if (jumpToTurn(item.turn)) { setNotice(null); return }
+          if (jumpToTurn(item.turn)) {
+            setNotice(null)
+            window.setTimeout(() => { focusImage(item) }, 700)
+            return
+          }
           if (performance.now() - started > 4000) {
             setNotice(tr('jumpFailed'))
             return
@@ -956,8 +984,9 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
             ]),
             h('button', {
               key: 'open', type: 'button', className: 'msn-attach-open',
-              onClick: (event) => { event.stopPropagation(); void openFolder(item) },
-              title: tr('openFolder'),
+              disabled: !item.exists,
+              onClick: (event) => { event.stopPropagation(); if (item.exists) void openFolder(item) },
+              title: item.exists ? tr('openFolder') : tr('missingFile'),
             }, tr('openFolder')),
           ]))
       })
@@ -981,13 +1010,16 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
           h('div', { key: 'meta', className: 'msn-tile-meta' }, [
             h('span', { key: 'o', className: 'msn-badge', 'data-origin': item.origin },
               item.origin === 'agent' ? tr('originAgent') : tr('originUser')),
+            item.exists ? null : h('span', { key: 'm', className: 'msn-missing' }, tr('missingFile')),
             h('span', { key: 't', className: 'msn-tile-time' }, timeText(item.time)),
           ]),
           h('button', {
             key: 'open', type: 'button', className: 'msn-tile-open',
-            onClick: (event) => { event.stopPropagation(); void openFolder(item) },
-            title: tr('openFolder'),
+            disabled: !item.exists,
+            onClick: (event) => { event.stopPropagation(); if (item.exists) void openFolder(item) },
+            title: item.exists ? tr('openFolder') : tr('missingFile'),
           }, tr('openFolder')),
+          item.exists ? null : h('span', { key: 'gone', className: 'msn-tile-gone' }, tr('missingFile')),
         ])
       })
 

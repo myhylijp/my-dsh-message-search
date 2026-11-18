@@ -24,7 +24,7 @@ export const name = 'message-search'
 /** Client 页面读取的私有路由。 */
 const HTTP_PATH = '/api/message-search'
 /** Host 构建标记。 */
-const HOST_REVISION = '2026-11-18.3'
+const HOST_REVISION = '2026-11-18.4'
 /** 一次检索最多返回多少条命中。 */
 const MAX_BLOB_BYTES = 12 * 1024 * 1024
 const DEFAULT_MAX_HITS = 200
@@ -140,7 +140,7 @@ function start(ctx, config) {
         continue
       }
       // 附件（图片 / 文件）出现在三类事件里：用户上传、待发输入、工具产出
-      const collectAttachments = (content, origin, meta) => {
+      const collectAttachments = (content, origin, meta, source) => {
         if (!Array.isArray(content)) return
         for (const part of content) {
           const ref = part?.attachment
@@ -154,6 +154,7 @@ function start(ctx, config) {
             width: Number(ref.width ?? 0),
             height: Number(ref.height ?? 0),
             origin,
+            source,
             turn: meta.turn,
             seq: meta.seq,
             time: meta.time,
@@ -162,12 +163,12 @@ function start(ctx, config) {
       }
       if (event.type === 'agent/inbox/spliced') {
         for (const entry of Array.isArray(event.data?.inserted) ? event.data.inserted : []) {
-          collectAttachments(entry?.content, 'user', { turn, seq: Number(event.seq ?? 0), time: Number(event.time ?? 0) })
+          collectAttachments(entry?.content, 'user', { turn, seq: Number(event.seq ?? 0), time: Number(event.time ?? 0) }, 'inbox')
         }
         continue
       }
       if (event.type === 'tool/result') {
-        collectAttachments(event.data?.message?.content, 'agent', { turn, seq: Number(event.seq ?? 0), time: Number(event.time ?? 0) })
+        collectAttachments(event.data?.message?.content, 'agent', { turn, seq: Number(event.seq ?? 0), time: Number(event.time ?? 0) }, 'tool')
         continue
       }
       // Agent 写出的文件：write / edit 工具的 path 参数（这两个工具是落盘的）
@@ -186,7 +187,7 @@ function start(ctx, config) {
         continue
       }
       if (event.type === 'user/message') {
-        collectAttachments(event.data?.content, 'user', { turn, seq: Number(event.seq ?? 0), time: Number(event.time ?? 0) })
+        collectAttachments(event.data?.content, 'user', { turn, seq: Number(event.seq ?? 0), time: Number(event.time ?? 0) }, 'message')
         const content = textOf(event.data?.content)
         if (content.trim() !== '') {
           messages.push({ role: 'user', text: content, time: Number(event.time ?? 0), seq: Number(event.seq ?? 0), turn })
@@ -433,7 +434,10 @@ function start(ctx, config) {
       const title = parsed.title !== '' ? parsed.title : session.sessionId
       // 同一张图会同时出现在 agent/inbox/spliced、user/message、tool/result 里，
       // 按 (sessionId, attachmentId) 去重，保留第一次出现的位置。
-      const seen = new Set()
+      // 同一条附件会在 inbox / user message / tool result 里重复出现，
+      // 用"最可信的事件"决定它属于哪一轮：user/message > tool/result > inbox。
+      const priorityOf = (source) => (source === 'message' ? 3 : source === 'tool' ? 2 : 1)
+      const seen = new Map()
       if (kind === 'file') {
         // Agent 写出的工作区文件：同一会话里同一路径只保留最后一次写入
         const lastWrite = new Map()
@@ -443,7 +447,7 @@ function start(ctx, config) {
           if (query !== '' && !name.toLowerCase().includes(query)) continue
           const key = session.sessionId + '|file|' + writePath
           if (seen.has(key)) continue
-          seen.add(key)
+          seen.set(key, { source: 'tool', seq: write.seq, turn: write.turn })
           scanned += 1
           let exists = false
           let bytes = 0
@@ -477,8 +481,15 @@ function start(ctx, config) {
         if (attachment.kind !== kind) continue
         if (query !== '' && !attachment.name.toLowerCase().includes(query)) continue
         const key = session.sessionId + '|' + attachment.id
-        if (seen.has(key)) continue
-        seen.add(key)
+        const known = seen.get(key)
+        if (known !== undefined) {
+          // 已有一条更可信（或更靠后）的记录：替换掉它，保证 turn 指向真正的消息
+          if (priorityOf(attachment.source) < priorityOf(known.source)) continue
+          if (priorityOf(attachment.source) === priorityOf(known.source) && attachment.seq <= known.seq) continue
+          const index = items.indexOf(known)
+          if (index >= 0) items.splice(index, 1)
+        }
+        seen.set(key, attachment)
         scanned += 1
         const filePath = attachmentPathOf(attachment)
         let exists = false
