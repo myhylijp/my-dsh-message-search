@@ -1,6 +1,6 @@
 {
   "name": "my-dsh-message-search",
-  "version": "0.3.4",
+  "version": "0.3.6",
   "license": "MIT",
   "description": "跨会话消息检索：Ctrl+F 打开，按当前会话 / 工作区 / 全部会话检索消息正文",
   "repository": {

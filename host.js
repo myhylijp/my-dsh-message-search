@@ -24,7 +24,7 @@ export const name = 'message-search'
 /** Client 页面读取的私有路由。 */
 const HTTP_PATH = '/api/message-search'
 /** Host 构建标记。 */
-const HOST_REVISION = '2026-11-18.6'
+const HOST_REVISION = '2026-11-18.8'
 /** 一次检索最多返回多少条命中。 */
 const MAX_BLOB_BYTES = 12 * 1024 * 1024
 const DEFAULT_MAX_HITS = 200

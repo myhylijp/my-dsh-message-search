@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const NS = 'messageSearch'
     const ROUTE = 'api/message-search'
-    const UI_REVISION = '2026-11-18.6'
+    const UI_REVISION = '2026-11-18.8'
 
     const zh = {
       title: '检索消息',
@@ -35,7 +35,8 @@ window.__ModuleLoader__.load({
       originAgent: 'Agent 生成',
       openFolder: '打开文件夹',
       locateAttachment: '定位到所在消息',
-      jumpFailed: '没能跳到该消息所在轮次（会话可能还没渲染出轮次导航）',
+      jumpFailed: '已打开会话，但没能定位到该消息所在位置',
+      jumpTopOnly: '已打开会话并回到顶部（该会话没有轮次导航）',
       missingFile: '文件缺失',
       scopeCurrent: '当前会话',
       scopeWorkspace: '工作区',
@@ -82,7 +83,8 @@ window.__ModuleLoader__.load({
       originAgent: 'Agent',
       openFolder: 'Open folder',
       locateAttachment: 'Jump to the message',
-      jumpFailed: 'Could not jump to that turn yet (the turn navigation may not be rendered)',
+      jumpFailed: 'Opened the session but could not locate the message',
+      jumpTopOnly: 'Opened the session and scrolled to the top (no turn navigation here)',
       missingFile: 'file missing',
       scopeCurrent: 'This session',
       scopeWorkspace: 'Workspace',
@@ -206,6 +208,17 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
 .msn-attach{display:flex;align-items:stretch;gap:6px;border-radius:12px;padding:2px}
 .msn-attach:hover,.msn-attach[data-active='true']{background:var(--dsw-alias-interactive-bg-hover)}
 .msn-attach-main{flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:8px 10px;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.msn-ext{flex:none;width:38px;height:44px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:0.5px solid currentColor}
+.msn-ext-label{font-size:8.5px;font-weight:600;letter-spacing:.02em;line-height:1;max-width:34px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.msn-ext-doc{color:#2f5bd7;background:rgba(47,91,215,.10)}
+.msn-ext-sheet{color:#137a4a;background:rgba(19,122,74,.10)}
+.msn-ext-slides{color:#b4531a;background:rgba(180,83,26,.10)}
+.msn-ext-pdf{color:#c02b2b;background:rgba(192,43,43,.10)}
+.msn-ext-archive{color:#8a6512;background:rgba(138,101,18,.12)}
+.msn-ext-text{color:#556069;background:rgba(85,96,105,.10)}
+.msn-ext-code{color:#6b46c1;background:rgba(107,70,193,.10)}
+.msn-ext-image{color:#0d7c86;background:rgba(13,124,134,.10)}
+.msn-ext-other{color:#6b7280;background:rgba(107,114,128,.10)}
 .msn-attach-body{flex:1;min-width:0;display:block}
 .msn-attach-l1{display:flex;align-items:baseline;gap:8px;min-width:0}
 .msn-attach-name{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:none;max-width:52%}
@@ -635,6 +648,40 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
     }
 
     /** 检索面板。 */
+    /** 按扩展名判断文件类型（决定图标底色与角标文字）。 */
+    const FILE_KINDS = {
+      docx: ['DOCX', 'doc'], doc: ['DOC', 'doc'], rtf: ['RTF', 'doc'],
+      xlsx: ['XLSX', 'sheet'], xls: ['XLS', 'sheet'], csv: ['CSV', 'sheet'],
+      pptx: ['PPTX', 'slides'], ppt: ['PPT', 'slides'],
+      pdf: ['PDF', 'pdf'],
+      zip: ['ZIP', 'archive'], rar: ['RAR', 'archive'], '7z': ['7Z', 'archive'], gz: ['GZ', 'archive'],
+      md: ['MD', 'text'], markdown: ['MD', 'text'], txt: ['TXT', 'text'], log: ['LOG', 'text'],
+      json: ['JSON', 'code'], js: ['JS', 'code'], mjs: ['JS', 'code'], cjs: ['JS', 'code'],
+      ts: ['TS', 'code'], py: ['PY', 'code'], ps1: ['PS1', 'code'], sh: ['SH', 'code'],
+      png: ['PNG', 'image'], jpg: ['JPG', 'image'], jpeg: ['JPG', 'image'], gif: ['GIF', 'image'],
+      webp: ['WEBP', 'image'], svg: ['SVG', 'image'], bmp: ['BMP', 'image'],
+    }
+
+    /**
+     * 文件类型角标：圆角方块 + 文档轮廓 + 扩展名。
+     * @param {{name: string}} props - 文件名。
+     * @returns {object} React 元素。
+     */
+    function FileGlyph({ name }) {
+      const ext = (/.([A-Za-z0-9]+)$/.exec(String(name ?? ''))?.[1] ?? '').toLowerCase()
+      const [label, tone] = FILE_KINDS[ext] ?? [(ext === '' ? 'FILE' : ext.slice(0, 4).toUpperCase()), 'other']
+      return h('span', { className: 'msn-ext msn-ext-' + tone, 'aria-hidden': 'true' }, [
+        h('svg', {
+          key: 'i', viewBox: '0 0 24 24', width: 12, height: 12, fill: 'none', stroke: 'currentColor',
+          strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round',
+        }, [
+          h('path', { key: 'a', d: 'M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z' }),
+          h('path', { key: 'b', d: 'M14 3.5V8h4' }),
+        ]),
+        h('span', { key: 'l', className: 'msn-ext-label' }, label),
+      ])
+    }
+
     /** 图片缩略图：按需向 Host 取 data URL。 */
     function AttachmentThumb({ item, request, enabled, variant }) {
       const [url, setUrl] = React.useState(null)
@@ -725,7 +772,7 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
       React.useEffect(() => {
         // 只在"关 → 开"的那一次给默认范围：有当前会话就搜当前会话，否则搜全部。
         // 不能依赖 sessionId 变化，否则探针晚到会把用户手动选的范围冲掉。
-        if (isOpen && !wasOpenRef.current) { setScope(sessionId === undefined ? 'all' : 'current'); setMenuOpen(false) }
+        if (isOpen && !wasOpenRef.current) { setScope(sessionId === undefined ? 'all' : 'current'); setMenuOpen(false); setNotice(null) }
         if (!isOpen) setMenuOpen(false)
         wasOpenRef.current = isOpen
       }, [isOpen, sessionId])
@@ -848,6 +895,30 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
         return true
       }
 
+      /** 轻提示：浮在窗口底部，3 秒消失（不占检索面板版面）。 */
+      const toast = (message) => {
+        const node = document.createElement('div')
+        node.textContent = message
+        node.style.cssText = 'position:fixed;left:50%;bottom:36px;transform:translateX(-50%);z-index:1300;padding:8px 14px;border-radius:10px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);border:0.5px solid var(--dsw-alias-border-l4);box-shadow:0 8px 24px rgba(0,0,0,.18);font-size:12.5px'
+        document.body.append(node)
+        window.setTimeout(() => node.remove(), 3000)
+      }
+
+      /** 会话没有轮次导航时的兜底：滚到正文顶部。 */
+      const scrollTranscriptTop = () => {
+        const chat = document.querySelector('[data-conversation-region="chat"]')
+        if (chat === null) return false
+        const list = []
+        if (chat.scrollHeight > chat.clientHeight + 20) list.push(chat)
+        for (const el of chat.querySelectorAll('*')) {
+          if (el.clientHeight > 120 && el.scrollHeight > el.clientHeight + 20) list.push(el)
+        }
+        const scroller = list.sort((a, b) => b.scrollTop - a.scrollTop)[0]
+        if (scroller === undefined) return false
+        scroller.scrollTop = 0
+        return true
+      }
+
       /** 附件条目：打开会话并跳到它所在的那一轮。 */
       const openAttachmentItem = (item) => {
         setOpen(false)
@@ -860,7 +931,9 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
             return
           }
           if (performance.now() - started > 4000) {
-            setNotice(tr('jumpFailed'))
+            // 会话没有轮次导航（例如只有一轮）：滚到正文顶部，并用浮层提示，不再占用检索面板
+            const scrolled = item.turn <= 1 && scrollTranscriptTop()
+            toast(scrolled ? tr('jumpTopOnly') : tr('jumpFailed'))
             return
           }
           window.setTimeout(attempt, 300)
@@ -968,6 +1041,7 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
               onClick: () => openAttachmentItem(item),
               title: tr('locateAttachment'),
             }, [
+              h(FileGlyph, { key: 'glyph', name: item.name !== '' ? item.name : item.id }),
               h('span', { key: 'body', className: 'msn-attach-body' }, [
                 h('span', { key: 'l1', className: 'msn-attach-l1' }, [
                   h('span', { key: 'n', className: 'msn-attach-name' }, item.name !== '' ? item.name : item.id.slice(0, 16)),
