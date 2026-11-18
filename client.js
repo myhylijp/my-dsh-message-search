@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const NS = 'messageSearch'
     const ROUTE = 'api/message-search'
-    const UI_REVISION = '2026-11-18.2'
+    const UI_REVISION = '2026-11-18.3'
 
     const zh = {
       title: '检索消息',
@@ -32,7 +32,7 @@ window.__ModuleLoader__.load({
       noImages: '没有匹配的图片',
       originUser: '用户上传',
       originAgent: 'Agent 生成',
-      openFolder: '打开所在文件夹',
+      openFolder: '打开文件夹',
       locateAttachment: '定位到所在消息',
       jumpFailed: '没能跳到该消息所在轮次（会话可能还没渲染出轮次导航）',
       missingFile: '文件缺失',
@@ -78,7 +78,7 @@ window.__ModuleLoader__.load({
       noImages: 'No matching images',
       originUser: 'Uploaded',
       originAgent: 'Agent',
-      openFolder: 'Show in folder',
+      openFolder: 'Open folder',
       locateAttachment: 'Jump to the message',
       jumpFailed: 'Could not jump to that turn yet (the turn navigation may not be rendered)',
       missingFile: 'file missing',
@@ -208,6 +208,16 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
 .msn-attach-open{flex:none;align-self:center;margin-right:6px;appearance:none;border:0.5px solid var(--dsw-alias-border-l4);background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;padding:3px 10px;border-radius:999px;cursor:pointer}
 .msn-attach-open:hover{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-caption)}
 .msn-thumb{flex:none;width:44px;height:44px;border-radius:8px;object-fit:cover;background:var(--dsw-alias-bg-module-platform)}
+.msn-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(136px,1fr));gap:10px;padding:6px 4px 12px}
+.msn-tile{position:relative;border-radius:12px;overflow:hidden;background:var(--dsw-alias-bg-module-platform);border:0.5px solid var(--dsw-alias-border-l4)}
+.msn-tile[data-active='true']{border-color:var(--dsw-alias-label-caption);box-shadow:0 0 0 1px var(--dsw-alias-label-caption)}
+.msn-tile-hit{display:block;width:100%;padding:0;border:0;background:transparent;cursor:pointer}
+.msn-tile-img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--dsw-alias-bg-module-platform)}
+.msn-tile-empty{display:block;width:100%;aspect-ratio:4/3;background:var(--dsw-alias-interactive-bg-hover)}
+.msn-tile-meta{display:flex;align-items:center;gap:6px;padding:5px 8px 6px;font-size:11px;color:var(--dsw-alias-label-caption)}
+.msn-tile-time{margin-left:auto;font-variant-numeric:tabular-nums}
+.msn-tile-open{position:absolute;top:6px;right:6px;opacity:0;transition:opacity .15s ease;appearance:none;border:0.5px solid rgba(255,255,255,.35);background:rgba(0,0,0,.55);color:#fff;font:inherit;font-size:11px;line-height:16px;padding:2px 8px;border-radius:999px;cursor:pointer}
+.msn-tile:hover .msn-tile-open,.msn-tile[data-active='true'] .msn-tile-open{opacity:1}
 .msn-thumb-empty{display:inline-block}
 .msn-missing{color:var(--dsw-alias-state-error-primary)}
 .msn-note-warn{color:var(--dsw-alias-state-error-primary)}
@@ -616,7 +626,7 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
 
     /** 检索面板。 */
     /** 图片缩略图：按需向 Host 取 data URL。 */
-    function AttachmentThumb({ item, request, enabled }) {
+    function AttachmentThumb({ item, request, enabled, variant }) {
       const [url, setUrl] = React.useState(null)
       React.useEffect(() => {
         if (!enabled) return undefined
@@ -626,9 +636,9 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
           .catch(() => { if (alive) setUrl(null) })
         return () => { alive = false }
       }, [enabled, item.id, item.mediaType, request])
-      if (!enabled) return h('span', { className: 'msn-thumb msn-thumb-empty' })
-      if (url === null) return h('span', { className: 'msn-thumb msn-thumb-empty' })
-      return h('img', { className: 'msn-thumb', src: url, alt: item.name, loading: 'lazy' })
+      const mediaClass = variant === 'tile' ? 'msn-tile-img' : 'msn-thumb'
+      if (!enabled || url === null) return h('span', { className: (variant === 'tile' ? 'msn-tile-empty' : 'msn-thumb msn-thumb-empty') })
+      return h('img', { className: mediaClass, src: url, alt: item.name, loading: 'lazy' })
     }
 
     function SearchPanel(props) {
@@ -952,6 +962,35 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
           ]))
       })
 
+      const galleryTiles = attachments.map((item, index) => {
+        const size = item.bytes >= 1024 * 1024
+          ? (item.bytes / 1024 / 1024).toFixed(1) + ' MB'
+          : Math.max(1, Math.round(item.bytes / 1024)) + ' KB'
+        return h('div', {
+          key: item.sessionId + '-' + String(item.seq) + '-' + item.id + '-' + String(index),
+          className: 'msn-tile',
+          'data-active': index === activeIndex ? 'true' : undefined,
+          onMouseEnter: () => setActiveIndex(index),
+          title: (item.name !== '' ? item.name : item.id) + ' · ' + size,
+        }, [
+          h('button', {
+            key: 'hit', type: 'button', className: 'msn-tile-hit',
+            onClick: () => openAttachmentItem(item),
+            'aria-label': tr('locateAttachment'),
+          }, h(AttachmentThumb, { key: 'img', item, request: requestRef.current, enabled: index < 48, variant: 'tile' })),
+          h('div', { key: 'meta', className: 'msn-tile-meta' }, [
+            h('span', { key: 'o', className: 'msn-badge', 'data-origin': item.origin },
+              item.origin === 'agent' ? tr('originAgent') : tr('originUser')),
+            h('span', { key: 't', className: 'msn-tile-time' }, timeText(item.time)),
+          ]),
+          h('button', {
+            key: 'open', type: 'button', className: 'msn-tile-open',
+            onClick: (event) => { event.stopPropagation(); void openFolder(item) },
+            title: tr('openFolder'),
+          }, tr('openFolder')),
+        ])
+      })
+
       const rows = hits.map((hit, index) => {
         const where = hit.workspaceTitle !== '' ? hit.workspaceTitle : tr('ungrouped')
         const title = hit.title !== '' ? hit.title : tr('untitled')
@@ -1100,7 +1139,9 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
           h('div', { key: 'body', className: 'msn-body' },
             listing
               ? (attachments.length > 0
-                ? h('ul', { key: 'list', className: 'msn-list' }, attachmentRows)
+                ? (mode === 'image'
+                  ? h('div', { key: 'gallery', className: 'msn-gallery' }, galleryTiles)
+                  : h('ul', { key: 'list', className: 'msn-list' }, attachmentRows))
                 : h('div', { key: 'empty', className: 'msn-body-empty' },
                   phase === 'done' ? tr(mode === 'image' ? 'noImages' : 'noFiles') : (phase === 'searching' ? tr('searching') : '')))
               : (hits.length > 0
