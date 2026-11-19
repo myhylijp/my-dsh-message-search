@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const NS = 'messageSearch'
     const ROUTE = 'api/message-search'
-    const UI_REVISION = '2026-11-19.3'
+    const UI_REVISION = '2026-11-19.4'
 
     const zh = {
       title: '检索消息',
@@ -60,7 +60,7 @@ window.__ModuleLoader__.load({
       hint: '↑↓ 选择 · Enter 打开 · Esc 关闭',
       close: '关闭检索',
       clear: '清空',
-      openedInExplorer: '已在资源管理器中打开：{name}',
+      openingInExplorer: '正在打开：{name}',
       untitled: '未命名会话',
       ungrouped: '未分组',
       roleUser: '我',
@@ -110,7 +110,7 @@ window.__ModuleLoader__.load({
       hint: '↑↓ select · Enter open · Esc close',
       close: 'Close search',
       clear: 'Clear',
-      openedInExplorer: 'Opened in Explorer: {name}',
+      openingInExplorer: 'Opening: {name}',
       untitled: 'Untitled session',
       ungrouped: 'No workspace',
       roleUser: 'You',
@@ -878,7 +878,7 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
           await requestRef.current('attachment-open', { id: item.id, kind: item.kind, path: item.path })
           setNotice(null)
           // 资源管理器可能被系统放在后台，这里给一条明确反馈
-          toast(tr('openedInExplorer', { name: item.name !== '' ? item.name : tr('openFolder') }))
+          toast(tr('openingInExplorer', { name: item.name !== '' ? item.name : tr('openFolder') }))
         } catch (error) {
           setNotice(error instanceof Error ? error.message : String(error))
         }
