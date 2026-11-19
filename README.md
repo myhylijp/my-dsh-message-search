@@ -58,3 +58,14 @@ step/end leaves unresolved tool call call_00_...
 - 只检索消息正文，不搜工具调用参数与工具输出；需要更细的检索维度再加字段。
 - 全部会话范围会解压所有日志（当前约十几 MB，可接受）；会话量很大时应改为增量索引文件。
 - Host 侧代码不热替换：升级 `host.js` 后需要重启应用。
+
+
+## 在资源管理器中定位文件
+
+「打开文件夹」按钮由 Host 的 `attachment-open` 处理：
+
+- **不经 `cmd /c`**（路径里的 `&`、`|`、`^`、`%` 会被 cmd 二次解析），直接
+  `spawn('explorer.exe', ['/select,', path])`，路径按参数传递；
+- 路径中含逗号时（explorer 的 `/select,` 会误切分）退化为「打开所在目录」，返回值里 `select: false`；
+- 非 Windows 平台直接报错（不静默失败）；
+- explorer 成功时也可能返回退出码 1，因此不按退出码判定成败。

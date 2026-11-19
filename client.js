@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const NS = 'messageSearch'
     const ROUTE = 'api/message-search'
-    const UI_REVISION = '2026-11-18.10'
+    const UI_REVISION = '2026-11-19.1'
 
     const zh = {
       title: '检索消息',

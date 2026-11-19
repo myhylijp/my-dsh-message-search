@@ -24,7 +24,7 @@ export const name = 'message-search'
 /** Client 页面读取的私有路由。 */
 const HTTP_PATH = '/api/message-search'
 /** Host 构建标记。 */
-const HOST_REVISION = '2026-11-18.10'
+const HOST_REVISION = '2026-11-19.1'
 /** 一次检索最多返回多少条命中。 */
 const MAX_BLOB_BYTES = 12 * 1024 * 1024
 const DEFAULT_MAX_HITS = 200
@@ -598,9 +598,14 @@ function start(ctx, config) {
     } catch {
       throw new Error('文件不存在（可能已被移动或清理）')
     }
-    const child = spawn('cmd', ['/c', 'explorer', '/select,', resolved], { detached: true, stdio: 'ignore', windowsHide: true })
+    // 不再经 cmd /c：路径里有 & | ^ % 时会被 cmd 二次解析。
+    // 直接调用资源管理器，路径按参数传递；含逗号的路径（/select, 会误切分）退化为打开所在目录。
+    if (process.platform !== 'win32') throw new Error('当前平台不支持在资源管理器中定位文件')
+    const wantsSelect = !resolved.includes(',')
+    const args = wantsSelect ? ['/select,', resolved] : [path.dirname(resolved)]
+    const child = spawn('explorer.exe', args, { detached: true, stdio: 'ignore', windowsHide: true })
     child.unref()
-    return { ok: true, path: resolved }
+    return { ok: true, path: resolved, select: wantsSelect }
   }
 
   /** 读取图片字节，返回 data URL（供列表缩略预览）。 */
