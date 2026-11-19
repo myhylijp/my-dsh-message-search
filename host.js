@@ -24,7 +24,7 @@ export const name = 'message-search'
 /** Client 页面读取的私有路由。 */
 const HTTP_PATH = '/api/message-search'
 /** Host 构建标记。 */
-const HOST_REVISION = '2026-11-19.2'
+const HOST_REVISION = '2026-11-19.3'
 /** 一次检索最多返回多少条命中。 */
 const MAX_BLOB_BYTES = 12 * 1024 * 1024
 const DEFAULT_MAX_HITS = 200
@@ -604,7 +604,8 @@ function start(ctx, config) {
     // /select, 与路径必须在同一个参数里（分开传时 explorer 只认开关、忽略路径）
     const wantsSelect = !resolved.includes(',')
     const args = wantsSelect ? [`/select,${resolved}`] : [path.dirname(resolved)]
-    const child = spawn('explorer.exe', args, { detached: true, stdio: 'ignore', windowsHide: true })
+    // 注意：不能带 windowsHide —— 它会让 explorer 造出隐藏窗口（用户完全看不到）
+    const child = spawn('explorer.exe', args, { detached: true, stdio: 'ignore' })
     child.unref()
     return { ok: true, path: resolved, select: wantsSelect }
   }

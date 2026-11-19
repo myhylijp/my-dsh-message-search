@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const NS = 'messageSearch'
     const ROUTE = 'api/message-search'
-    const UI_REVISION = '2026-11-19.2'
+    const UI_REVISION = '2026-11-19.3'
 
     const zh = {
       title: '检索消息',
@@ -726,7 +726,8 @@ body[data-ds-dark-theme] .msn-layer{background:rgba(0,0,0,.55)}
       const [searchedFor, setSearchedFor] = React.useState('')
       // 检索模式：文本 / 附件 / 图片。附件与图片允许空关键词（=列出全部）。
       const [mode, setMode] = React.useState('text')
-      const signature = `${mode}|${query.trim()}|${scope}|${workspaceId}`
+      // sessionId 也纳入签名：切换会话后结果必须重算，否则附件/图片列表还是上一个会话的
+      const signature = `${mode}|${query.trim()}|${scope}|${workspaceId}|${sessionId ?? ''}`
       const stale = searchedFor !== signature
 
       const requestRef = React.useRef(request)
