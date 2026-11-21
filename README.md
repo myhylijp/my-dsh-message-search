@@ -1,6 +1,6 @@
 # my-dsh-message-search
 
-[![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
+[![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com) [![开放插件市场](https://img.shields.io/endpoint?url=https%3A%2F%2Fdshopen.org%2Fbadge%2Fmy-dsh-message-search.json)](https://dshopen.org/zh/plugins/my-dsh-message-search/)
 
 全屏消息检索面板，`Ctrl+F` 打开：按「当前会话 / 工作区 / 全部会话」检索消息正文，
 命中按时间倒序列出（会话标题、工作区、角色、时间、高亮片段），`Enter` 打开所在会话。
