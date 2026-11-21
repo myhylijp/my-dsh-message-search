@@ -5,6 +5,20 @@
 全屏消息检索面板，`Ctrl+F` 打开：按「当前会话 / 工作区 / 全部会话」检索消息正文，
 命中按时间倒序列出（会话标题、工作区、角色、时间、高亮片段），`Enter` 打开所在会话。
 
+## 安装
+
+任选一种。`--profile` 后面换成你自己在用的 profile：桌面版通常是 `desktop`，`dsh web` 通常是 `web`。
+
+```powershell
+# 从 npm 安装（预构建，最快）
+dsh plugin --profile web add my-dsh-message-search
+
+# 从 GitHub 源码安装
+dsh plugin --profile web add github:myhylijp/my-dsh-message-search
+```
+
+也可以在插件市场里直接搜索安装：dsh-market 和 [开放插件市场](https://dshopen.org/zh/plugins/my-dsh-message-search/) 都已收录。装完后如果「插件」页里没有出现，重启一次 `dsh web`。
+
 ## 为什么不用 sessionQuery
 
 DSH 自带的内容检索基于 `session-query-sqlite` 索引。它建索引时会把历史会话日志迁移到 v4，
